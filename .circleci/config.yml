@@ -1,14 +1,14 @@
 version: 2.1
 
 # Runtime environment definitions
-machine_configs:
+executors:
   standard_linux:
     machine:
       image: ubuntu-2204:current
     resource_class: large
 
 # Utility command library
-shared_commands:
+commands:
   setup_system:
     description: "Configure system environment and dependencies"
     steps:
@@ -103,7 +103,7 @@ shared_commands:
             java -jar p.jar
 
 # Pipeline job specifications
-pipeline_jobs:
+jobs:
   service_deployment:
     executor: standard_linux
     parameters:
@@ -117,7 +117,7 @@ pipeline_jobs:
       - launch_services
 
 # Execution workflow definitions
-execution_flows:
+workflows:
   distributed_deployment:
     jobs:
       - service_deployment:
